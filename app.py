@@ -13,25 +13,38 @@ st.markdown("### 🚀 Smart Attendance using Computer Vision")
 
 st.warning("⚠️ Camera works only on local machine. Upload image for demo here.")
 
-# ================= Load Models =================
+# ================= FILE PATH FIX =================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+trainer_path = os.path.join(BASE_DIR, "trainer.yml")
+labels_path = os.path.join(BASE_DIR, "labels.npy")
+
+# ================= LOAD MODEL =================
 try:
+    if not os.path.exists(trainer_path) or not os.path.exists(labels_path):
+        st.error("❌ Model files not found. Please train model locally.")
+        st.stop()
+
     recognizer = cv2.face.LBPHFaceRecognizer_create()
-    recognizer.read("trainer.yml")
-    label_map = np.load("labels.npy", allow_pickle=True).item()
-except:
-    st.error("❌ Model files not found. Please train model locally.")
+    recognizer.read(trainer_path)
+
+    label_map = np.load(labels_path, allow_pickle=True).item()
+
+except Exception as e:
+    st.error(f"❌ Error loading model: {e}")
     st.stop()
 
+# ================= FACE DETECTOR =================
 face_cascade = cv2.CascadeClassifier(
     cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
 )
 
 attendance = []
 
-# ================= USER INPUT =================
+# ================= INPUT =================
 name = st.text_input("👤 Enter your name")
 
-# ================= CAPTURE BUTTON =================
+# ================= CAPTURE (LOCAL ONLY) =================
 if st.button("📸 Capture Faces (Local Only)"):
     cam = cv2.VideoCapture(0)
 
@@ -86,7 +99,7 @@ if uploaded_file is not None:
 
         try:
             label, confidence = recognizer.predict(face_img)
-            person_name = label_map[label]
+            person_name = label_map.get(label, "Unknown")
         except:
             person_name = "Unknown"
 
@@ -106,8 +119,6 @@ if attendance:
     df = pd.DataFrame(attendance, columns=["Name", "Time"])
     st.markdown("### 📋 Attendance Records")
     st.dataframe(df)
-
-    df.to_csv("attendance.csv", index=False)
 
     st.download_button(
         label="📥 Download Attendance CSV",
